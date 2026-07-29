@@ -2,24 +2,58 @@
 
 ![Mineradio 暗场启动页](./docs/assets/readme/cinema-beat-smoke.png)
 
-Mineradio 是一款 Windows 桌面沉浸式音乐播放器，把搜索播放、歌词舞台、粒子视觉、3D 歌单架和完整桌面模式组合成一个更接近现场感的私人音乐空间。
+Mineradio 是一款沉浸式音乐播放器，把搜索播放、歌词舞台、粒子视觉、3D 歌单架和完整桌面模式组合成一个更接近现场感的私人音乐空间。支持 **Windows** 和 **Linux**。
 
-## 立即下载 Windows 安装包
+> 本仓库是 [XxHuberrr/Mineradio](https://github.com/XxHuberrr/Mineradio) 的 Linux 适配分支。Windows 版安装包请到原作者仓库下载。
 
-> 安装包可从夸克盘、百度云、蓝奏云或 GitHub Release 手动下载；软件内更新入口仍只打开网盘线路，不读取 Release 附件。
+## 立即下载
+
+### Linux (Debian/Ubuntu)
+
+| 下载入口 | 说明 |
+| --- | --- |
+| [GitHub Release](https://github.com/YannZhou/Mineradio/releases) | `.deb` 安装包 |
+
+```bash
+# 安装
+sudo apt install ./mineradio_2.0.3_amd64.deb
+# 或直接
+sudo dpkg -i mineradio_2.0.3_amd64.deb
+```
+
+### Windows
+
+> 安装包通过夸克盘、百度云和蓝奏云分发；GitHub Release 用于版本说明与公开源码。
 
 | 下载入口 | 推荐人群 | 链接 |
 | --- | --- | --- |
 | 夸克盘 | 夸克用户 | [下载 Mineradio 2.0.3](https://pan.quark.cn/s/f40289e1c5d3) |
 | 百度云 | 百度网盘用户（提取码 `sjhp`） | [下载 Mineradio 2.0.3](https://pan.baidu.com/s/14fgTABgbfseOg9QuX0Um7Q?pwd=sjhp) |
 | 蓝奏云 | 直接下载 | [下载 Mineradio 2.0.3](https://xxhuber.lanzout.com/mineradio2) |
-| GitHub Release | GitHub 用户、版本说明与源码 | [下载 Mineradio 2.0.3](https://github.com/XxHuberrr/Mineradio/releases/tag/v2.0.3) |
+| GitHub Release | 版本说明与源码 | [Mineradio 2.0.3 Release](https://github.com/XxHuberrr/Mineradio/releases/tag/v2.0.3) |
 
 安装时只需要下载并运行 `Mineradio-2.0.3-Setup.exe`。不要把 `.blockmap`、`latest.yml` 或 `win-unpacked` 当成正式安装包。
 
-## 下载或安装被拦截怎么办
+## Linux 适配说明
 
-小众 Electron 桌面软件、未签名安装包有时会被浏览器、Windows Defender 或 SmartScreen 提示风险。请先确认安装包来自上面的网盘入口或官方 GitHub Release，文件名是 `Mineradio-2.0.3-Setup.exe`。
+本分支对 Mineradio 做了以下 Linux 平台适配：
+
+- GPU 渲染后端 `d3d11` → `gl`（OpenGL）
+- 鼠标侧键拦截（防止误触浏览器后退）
+- Linux 系统内存清理（基于 `/proc/sys/vm/drop_caches` + `sync`）
+- `.deb` 打包支持
+
+### Linux 已知限制
+
+- Wallpaper Engine 功能仅 Windows 可用
+- 完整桌面模式仅 Windows 可用
+- 系统内存清理中 `drop_caches` 操作需要 root 权限（可通过 `pkexec` 提权）
+
+详见 [Mineradio-Linux适配说明.md](./Mineradio-Linux适配说明.md)
+
+## 下载或安装被拦截怎么办（Windows）
+
+小众 Electron 桌面软件、未签名安装包有时会被浏览器、Windows Defender 或 SmartScreen 提示风险。请先确认安装包来自上面的三个网盘官方入口，文件名是 `Mineradio-2.0.3-Setup.exe`。
 
 1. 浏览器下载栏提示风险时，打开下载列表，点这条下载右侧的 `...` 三个点，选择 `保留` / `仍要保留` / `显示更多` 后继续保留。
 2. Windows SmartScreen 弹出蓝色拦截窗口时，点 `更多信息`，再点 `仍要运行`。
@@ -41,13 +75,13 @@ Mineradio 2.0 重新整理了视觉层次、桌面模式、主页与搜索体验
 
 状态：Mineradio 2.0.3 正式版。
 
-> 安全提示：`v1.0.10` 及更早旧安装包不再建议继续安装或传播。请使用本页提供的 `Mineradio-2.0.3-Setup.exe`。
+> 安全提示：`v1.0.10` 及更早旧安装包不再建议继续安装或传播。请使用本页提供的安装包。
 
 ## 核心特性
 
 - 首页包含每日推荐、平台推荐、继续听、听歌画像和我的歌单入口
-- 完整桌面模式保留播放器、主页、歌单和桌面交互
-- 支持本地 MP4 与 Wallpaper Engine 视觉内容
+- 完整桌面模式保留播放器、主页、歌单和桌面交互（Windows）
+- 支持本地 MP4 与 Wallpaper Engine 视觉内容（Windows）
 - 播放后切换到 Emily / 默认播放态视觉，歌词舞台与粒子舞台同步工作
 - 基于节奏的电影镜头视觉系统
 - 面向长播客和 DJ 曲目的专属视觉模式
@@ -61,25 +95,43 @@ Mineradio 2.0 重新整理了视觉层次、桌面模式、主页与搜索体验
 
 ## 使用说明
 
-Windows 用户可以从本页列出的夸克盘、百度云、蓝奏云或 GitHub Release 下载安装包。
+### Windows
+
+Windows 用户可以从本页列出的夸克盘、百度云或蓝奏云下载安装包。
 
 正式分发以 `Mineradio-2.0.3-Setup.exe` 为准，不建议直接使用 `win-unpacked` 目录。安装包会创建桌面快捷方式。
 
 已经安装过旧版本的用户可直接运行 `Mineradio-2.0.3-Setup.exe` 完成更新。软件内更新入口只会打开浏览器下载页，不会在客户端内下载或应用补丁。
+
+### Linux
+
+```bash
+# 从 .deb 安装
+sudo apt install ./mineradio_2.0.3_amd64.deb
+
+# 或从源码运行
+npm install
+npm start -- --no-sandbox --ozone-platform=x11
+```
 
 ## 开发运行
 
 ```bash
 npm install
 npm start
+
+# 构建 Windows 安装包
 npm run build:win
+
+# 构建 Linux .deb 包
+npm run build:linux
 ```
 
-桌面版入口由 Electron 主进程加载本地服务。`npm run build:win` 会生成 Windows NSIS 安装包，产物位于 `dist/`。
+桌面版入口由 Electron 主进程加载本地服务。构建产物位于 `dist/`。
 
 ## 更新机制
 
-Mineradio 会请求 GitHub Releases latest 检测新版本。远端版本高于本地版本时，应用内更新入口会展示 Release 内容，并通过系统浏览器打开可选网盘线路；即使 Release 附带完整安装包，`2.0.3+` 客户端也不会读取、下载、缓存或应用该附件与补丁。
+Mineradio 会请求 GitHub Releases latest 检测新版本。远端版本高于本地版本时，应用内更新入口会展示 Release 内容，并通过系统浏览器打开可选网盘线路；客户端不会在本地下载、缓存或应用安装包与补丁。
 
 本地验证更新链路时，可以通过 `MINERADIO_UPDATE_MANIFEST` 指向一个本地 manifest JSON 或 HTTP 地址来模拟线上 Release。
 
