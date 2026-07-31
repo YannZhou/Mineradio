@@ -5637,11 +5637,16 @@ const server = http.createServer(async (req, res) => {
       const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
       const auth = extractKugouAuth(kugouCookie);
       let result = null;
+      let liteOk = false;
       if (auth && auth.userid && auth.userid !== '0' && auth.token) {
+        // 概念版优先；空歌单（0 首）是正常结果，不回退标准版
         result = await kugouLite.litePlaylistTracks(id, kugouCookie);
-        if (!result.ok || !result.songs.length) result = null;
+        liteOk = !!(result && result.ok);
+        if (liteOk) {
+          result = { provider: 'kugou', tracks: result.songs || [], total: (result.songs || []).length };
+        }
       }
-      if (!result) {
+      if (!liteOk) {
         result = await handleKugouPlaylistTracks(id, kugouCookie, paged ? { limit, offset, paged: true } : {});
       }
       sendJSON(res, result);
