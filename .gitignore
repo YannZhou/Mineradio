@@ -1,0 +1,22 @@
+# ===== 依赖（可重装，不进版本库）=====
+node_modules/
+src/Mineradio-2.0.3/node_modules/
+src/Mineradio-2.0.3/kugou-server/node_modules/
+src/Mineradio-2.0.3/dist/linux-unpacked/resources/app/node_modules/
+src/Mineradio-2.0.3/kugou-server/package-lock.json
+
+# ===== 构建产物 =====
+src/Mineradio-2.0.3/dist/
+dist/
+*.deb
+
+# ===== 原始压缩包 =====
+Mineradio-2.0.3.zip
+
+# ===== 系统/编辑器 =====
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
