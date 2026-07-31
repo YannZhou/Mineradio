@@ -232,9 +232,15 @@ async function liteSongUrl(params, kugouCookie) {
     }, kugouCookie);
     const body = res && res.body;
     if (body && Number(body.status) === 1 && body.url) {
+      // 概念版返回逗号分隔的多地址（主+备用），前端代理只接受单个 URL，取第一个
+      const rawUrls = String(body.url).split(',').map(s => s.trim()).filter(Boolean);
+      const primary = rawUrls[0] || '';
+      if (!primary) {
+        return { provider: 'kugou', url: '', playable: false, reason: 'url_unavailable', message: '概念版未返回有效播放地址', requestedQuality, level: qualityLevel };
+      }
       return {
         provider: 'kugou',
-        url: String(body.url).trim(),
+        url: primary,
         playable: true,
         level: qualityLevel,
         quality: qualityLevel,
