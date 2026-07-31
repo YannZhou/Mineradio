@@ -802,7 +802,8 @@ function updateLoginProviderUi() {
       : '使用 <b>网易云音乐 App</b> 扫码，可同步歌单、红心与播客。')));
   var manualCookieOpen = isManualCookieOpenForProvider(loginProvider);
   if (shell) {
-    var useWebPreview = isQQ || isKugou || isQishui || (isNetease && (canOpenNeteaseWeb || manualCookieOpen));
+    // kugou 不参与 web-login-preview：概念版直接显示 QR，避免 .qr-shell.web-login-preview #qr-img { display:none } 隐藏二维码
+    var useWebPreview = isQQ || isQishui || (isNetease && (canOpenNeteaseWeb || manualCookieOpen));
     shell.classList.toggle('web-login-preview', useWebPreview);
     shell.classList.toggle('qq-preview', isQQ);
     shell.classList.toggle('netease-preview', isNetease && canOpenNeteaseWeb);
@@ -1189,6 +1190,8 @@ async function openKugouWebLogin() {
   // 概念版：不再打开浏览器窗口，直接刷新显示二维码
   kugouWebLoginBusy = true;
   try {
+    // 确保登录面板 drawer 展开（点「连接登录」按钮不会自动打开）
+    setLoginAuthDrawerOpen(true);
     await refreshQr();
   } finally {
     kugouWebLoginBusy = false;
