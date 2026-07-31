@@ -12,13 +12,13 @@ Mineradio 是一款沉浸式音乐播放器，把搜索播放、歌词舞台、�
 
 | 下载入口 | 说明 |
 | --- | --- |
-| [GitHub Release](https://github.com/YannZhou/Mineradio/releases) | `.deb` 安装包 |
+| [GitHub Release](https://github.com/YannZhou/Mineradio/releases) | `.deb` 安装包 + 去除依赖的源码包 |
 
 ```bash
-# 安装
-sudo apt install ./mineradio_2.0.3_amd64.deb
+# 安装 2.0.4
+sudo apt install ./mineradio_2.0.4_amd64.deb
 # 或直接
-sudo dpkg -i mineradio_2.0.3_amd64.deb
+sudo dpkg -i mineradio_2.0.4_amd64.deb
 ```
 
 ### Windows
@@ -33,6 +33,31 @@ sudo dpkg -i mineradio_2.0.3_amd64.deb
 | GitHub Release | 版本说明与源码 | [Mineradio 2.0.3 Release](https://github.com/XxHuberrr/Mineradio/releases/tag/v2.0.3) |
 
 安装时只需要下载并运行 `Mineradio-2.0.3-Setup.exe`。不要把 `.blockmap`、`latest.yml` 或 `win-unpacked` 当成正式安装包。
+
+## 🆕 v2.0.4 新增内容（Linux）
+
+### 1. 酷狗音乐概念版全流程适配（核心）
+
+以 EchoMusic（开源项目，内嵌 KuGouMusicApi）为参考，将酷狗音乐所有流程从标准版替换为**概念版**：
+
+- **扫码登录**：官方标准二维码，扫码确认实时反馈，登录态持久化（重启不掉）
+- **VIP 识别**：正确识别每日畅听 SVIP（`busi_vip` 字段）
+- **歌单**：概念版接口，仅显示本人创建的歌单（默认收藏 + 我喜欢），详情与曲目正常加载
+- **播放**：概念版签名音源；VIP 歌曲可听；音质映射（标准/320/无损 FLAC 全通）
+- **搜索/歌词**：概念版优先，标准版兜底
+- **音质说明**：概念版最高音质为无损 FLAC（无 Hi-Res/至臻/母带，属概念版本身限制），请求 Hi-Res 会自动降级为 FLAC
+
+### 2. 本地音乐歌词识别
+
+原版播放本地文件完全没有歌词，本版新增：
+
+- **同目录同名 .lrc 文件**优先读取
+- **音频内嵌歌词标签**（ID3 USLT / FLAC LYRICS / M4A，含同步歌词，基于 music-metadata）
+- **在线匹配兜底**：按歌名+歌手搜索酷狗/网易云歌词
+
+### 3. 其他
+
+- kugou-server（KuGouMusicApi）完整打包进 .deb，部署版概念版功能开箱即用
 
 ## Linux 适配说明
 
