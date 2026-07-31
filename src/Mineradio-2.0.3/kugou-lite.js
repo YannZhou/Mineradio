@@ -318,7 +318,15 @@ async function liteUserPlaylists(kugouCookie) {
     // 概念版返回 data.info（数组），兼容 data.list / data.lists
     const lists = (data && (data.info || data.list || data.lists)) || [];
     if (!Array.isArray(lists)) return { ok: false, playlists: [] };
+    // 只保留本人创建的歌单：list_create_userid === 当前 userid（收藏的他人歌单 type=1/source=2 不展示）
+    const myUserId = String(kugouCookie ? extractLiteUserid(kugouCookie) : '');
     const playlists = lists
+      .filter((item) => {
+        if (!item) return false;
+        const ownerId = String(item.list_create_userid || item.user_id || '');
+        if (myUserId && ownerId && ownerId !== myUserId) return false;
+        return true;
+      })
       .map((item) => {
         const pid = String(item.global_collection_id || item.specialid || item.listid || item.id || '');
         if (!pid) return null;
@@ -338,6 +346,11 @@ async function liteUserPlaylists(kugouCookie) {
     console.warn('[KugouLitePlaylists]', e && (e.message || e));
     return { ok: false, playlists: [] };
   }
+}
+function extractLiteUserid(cookieText) {
+  const text = String(cookieText || '');
+  const m = text.match(/userid=(\d+)/i);
+  return m ? m[1] : '';
 }
 
 // 歌单曲目（概念版 /playlist/track/all）
