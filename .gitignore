@@ -12,6 +12,7 @@ win-unpacked/
 *.msi
 *.blockmap
 *.zip
+*.tar.gz
 *.7z
 *.asar
 
