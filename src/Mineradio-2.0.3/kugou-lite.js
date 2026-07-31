@@ -261,14 +261,21 @@ async function liteVipDetail(kugouCookie) {
     const body = res && res.body;
     if (body && Number(body.status) === 1 && body.data) {
       const d = body.data;
-      const isVip = !!(d.is_vip || d.isVip || d.vip_status || d.union_vip_status);
-      const svip = !!(d.is_svip || d.isSvip || d.svip_status);
+      // 顶层字段 + busi_vip 数组（每日畅听会员/概念版会员在 busi_vip 里）
+      const busiVips = Array.isArray(d.busi_vip) ? d.busi_vip : [];
+      const anyBusiVip = busiVips.some((b) => b && (Number(b.is_vip) === 1 || Number(b.is_paid_vip) === 1));
+      const anyBusiSvip = busiVips.some((b) => b && Number(b.is_vip) === 1 && /svip/i.test(String(b.product_type || '')));
+      const topVip = Number(d.is_vip || d.vip_type || 0) > 0;
+      const topSvip = Number(d.svip_type || d.svip_level || 0) > 0;
+      const isVip = topVip || anyBusiVip;
+      const isSvip = topSvip || anyBusiSvip;
       return {
         ok: true,
         isVip,
-        isSvip: svip,
-        vipLevel: svip ? 'svip' : (isVip ? 'vip' : 'none'),
-        expireAt: d.vip_expire_time || d.expire_time || '',
+        isSvip,
+        vipLevel: isSvip ? 'svip' : (isVip ? 'vip' : 'none'),
+        expireAt: d.vip_end_time || (busiVips[0] && busiVips[0].vip_end_time) || '',
+        raw: d,
       };
     }
     return { ok: false, error_code: body && body.error_code };
@@ -282,19 +289,21 @@ async function liteUserPlaylists(kugouCookie) {
   try {
     const res = await liteCall('user_playlist', { page: 1, pagesize: 50 }, kugouCookie);
     const body = res && res.body;
-    const lists = (body && (body.list || body.data && body.data.list || body.data && body.data.lists)) || [];
+    const data = body && body.data;
+    // 概念版返回 data.info（数组），兼容 data.list / data.lists
+    const lists = (data && (data.info || data.list || data.lists)) || [];
     if (!Array.isArray(lists)) return { ok: false, playlists: [] };
     const playlists = lists
       .map((item) => {
-        const pid = String(item.specialid || item.listid || item.id || item.global_collection_id || '');
+        const pid = String(item.global_collection_id || item.specialid || item.listid || item.id || '');
         if (!pid) return null;
         return {
           id: pid,
           globalCollectionId: String(item.global_collection_id || ''),
-          name: String(item.specialname || item.list_name || item.name || '未命名歌单'),
-          cover: String(item.img || item.pic || item.cover || ''),
-          count: Number(item.songcount || item.count || item.song_count || 0) || 0,
-          creator: String(item.username || item.nickname || ''),
+          name: String(item.specialname || item.list_name || item.name || item.list_create_name || '未命名歌单'),
+          cover: String(item.img || item.pic || item.cover || item.create_user_pic || ''),
+          count: Number(item.songcount || item.count || item.song_count || item.per_num || item.m_count || 0) || 0,
+          creator: String(item.username || item.nickname || item.list_create_username || ''),
           provider: 'kugou',
         };
       })
