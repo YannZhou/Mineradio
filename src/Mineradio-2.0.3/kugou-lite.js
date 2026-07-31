@@ -203,19 +203,17 @@ async function liteSongUrl(params, kugouCookie) {
   const hash = String(params.hash || params.fileHash || params.id || '').trim();
   if (!hash) return { provider: 'kugou', url: '', playable: false, error: 'MISSING_HASH' };
   // 音质映射：Mineradio 的 jymaster/hires/lossless/exhigh/standard → 概念版参数
+  // 注意：酷狗概念版最高音质为 FLAC（无损），不支持 Hi-Res/至臻 → 自动降级
   const requestedQuality = String(params.quality || '').trim() || 'standard';
   let liteQuality = '128';
   let qualityLevel = 'standard';
-  if (typeof kugouApi.kugouQualityParam === 'function') {
-    liteQuality = String(kugouApi.kugouQualityParam(requestedQuality));
-    qualityLevel = String(requestedQuality).toLowerCase();
-    if (!['jymaster', 'hires', 'lossless', 'exhigh', 'standard'].includes(qualityLevel)) qualityLevel = 'standard';
-  } else {
-    const q = requestedQuality.toLowerCase();
-    if (q === 'jymaster') { liteQuality = 'viper_tape'; qualityLevel = 'jymaster'; }
-    else if (q === 'hires') { liteQuality = 'hires'; qualityLevel = 'hires'; }
-    else if (q === 'lossless' || q === 'sq') { liteQuality = 'flac'; qualityLevel = 'lossless'; }
-    else if (q === 'exhigh' || q === '320') { liteQuality = '320'; qualityLevel = 'exhigh'; }
+  const q = requestedQuality.toLowerCase();
+  if (q === 'jymaster' || q === 'hires' || q === 'lossless' || q === 'sq') {
+    liteQuality = 'flac';
+    qualityLevel = 'lossless';
+  } else if (q === 'exhigh' || q === '320') {
+    liteQuality = '320';
+    qualityLevel = 'exhigh';
   }
   // 按音质选择对应 hash（hq/sq/res），否则用主 hash
   let playHash = hash;
