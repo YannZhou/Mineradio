@@ -340,17 +340,51 @@ async function liteUserPlaylists(kugouCookie) {
   }
 }
 
-// 歌单曲目（概念版 /playlist/track/all 或 playlist_detail）
+// 歌单曲目（概念版 /playlist/track/all）
 async function litePlaylistTracks(playlistId, kugouCookie) {
   const pid = String(playlistId || '').trim();
   if (!pid) return { ok: false, songs: [] };
   try {
     const res = await liteCall('playlist_track_all', { id: pid, page: 1, pagesize: 50 }, kugouCookie);
     const body = res && res.body;
-    const lists = (body && (body.list || body.data && body.data.list || body.data && body.data.lists)) || [];
+    const data = body && body.data;
+    // 概念版返回 data.songs（数组），兼容 plist/list/lists
+    const lists = (data && (data.songs || data.plist || data.list || data.lists)) || [];
     if (!Array.isArray(lists)) return { ok: false, songs: [] };
     const songs = lists
-      .map((item) => (typeof kugouApi.mapKugouSearchItem === 'function' ? kugouApi.mapKugouSearchItem(item) : item))
+      .map((item) => {
+        // 概念版 songs 元素字段：name/hash/mixsongid/album_id/timelen/relate_goods
+        const norm = Object.assign({}, item);
+        // 歌单接口 name 是"歌手 - 歌名"格式，拆出纯歌名（搜索接口有 OriSongName 但歌单没有）
+        if (norm.name && !norm.SongName) {
+          const rawName = String(norm.name);
+          const m = rawName.match(/^(.*?)\s*[-–—]\s*(.+)$/);
+          if (m) {
+            norm.SongName = m[2].trim();
+            if (!norm.singerinfo && !norm.SingerName) norm.SingerName = m[1].trim();
+          } else {
+            norm.SongName = rawName;
+          }
+        }
+        if (norm.hash && !norm.FileHash) norm.FileHash = norm.hash;
+        if (norm.singerinfo && Array.isArray(norm.singerinfo)) {
+          norm.Singers = norm.singerinfo.map((s) => ({ name: s.singer_name || s.name || '', id: s.singer_id || s.id || '' }));
+        }
+        if (norm.album_id != null && !norm.AlbumID) norm.AlbumID = norm.album_id;
+        if (norm.mixsongid != null && !norm.MixSongID) norm.MixSongID = norm.mixsongid;
+        if (norm.timelen != null && !norm.Duration) norm.Duration = Math.round(Number(norm.timelen) / 1000);
+        if (norm.privilege != null && !norm.Privilege) norm.Privilege = norm.privilege;
+        // relate_goods 里有高音质 hash
+        if (Array.isArray(norm.relate_goods)) {
+          for (const g of norm.relate_goods) {
+            if (!g || !g.hash) continue;
+            const bitrate = Number(g.bitrate) || 0;
+            if (bitrate >= 320 && !norm.HQFileHash) norm.HQFileHash = g.hash;
+            if (bitrate >= 800 && !norm.SQFileHash) norm.SQFileHash = g.hash;
+          }
+        }
+        return typeof kugouApi.mapKugouSearchItem === 'function' ? kugouApi.mapKugouSearchItem(norm) : norm;
+      })
       .filter((s) => s && s.name && (s.hash || s.id));
     return { ok: true, songs };
   } catch (e) {
