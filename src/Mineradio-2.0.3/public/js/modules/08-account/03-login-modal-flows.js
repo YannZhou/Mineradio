@@ -579,7 +579,10 @@ async function showLoginModal(opts) {
 }
 function resumeLoginModalAfterGate() {
   bindLoginWorkflowPointerEvents();
-  setLoginAuthDrawerOpen(false);
+  // 竞态修复：若 kugou 概念版 QR 已生成（用户先点了「连接登录」），
+  // 不能在此关 drawer，否则 gate 解锁后会把正在显示的二维码面板关掉
+  var qrActive = (typeof qrKey !== 'undefined' && qrKey && qrProvider === 'kugou');
+  if (!qrActive) setLoginAuthDrawerOpen(false);
   updateLoginProviderUi();
   scheduleLoginWorkflowEdges('open');
 }
@@ -1385,6 +1388,7 @@ async function checkQr() {
       var api = window.desktopWindow;
       if (!api || typeof api.checkKugouQrLogin !== 'function') { stopQrPoll(); return; }
       var kgResult = await api.checkKugouQrLogin(qrKey);
+      console.log('[KugouQR-poll] result:', JSON.stringify(kgResult));
       var $st = document.getElementById('qr-status');
       if (kgResult && kgResult.status === 'scanned') {
         if ($st) { $st.textContent = '已扫码，请在手机确认登录…'; $st.className = 'scan'; }

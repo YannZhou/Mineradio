@@ -277,6 +277,54 @@ async function liteVipDetail(kugouCookie) {
   }
 }
 
+// 用户歌单（概念版 /user/playlist）
+async function liteUserPlaylists(kugouCookie) {
+  try {
+    const res = await liteCall('user_playlist', { page: 1, pagesize: 50 }, kugouCookie);
+    const body = res && res.body;
+    const lists = (body && (body.list || body.data && body.data.list || body.data && body.data.lists)) || [];
+    if (!Array.isArray(lists)) return { ok: false, playlists: [] };
+    const playlists = lists
+      .map((item) => {
+        const pid = String(item.specialid || item.listid || item.id || item.global_collection_id || '');
+        if (!pid) return null;
+        return {
+          id: pid,
+          globalCollectionId: String(item.global_collection_id || ''),
+          name: String(item.specialname || item.list_name || item.name || '未命名歌单'),
+          cover: String(item.img || item.pic || item.cover || ''),
+          count: Number(item.songcount || item.count || item.song_count || 0) || 0,
+          creator: String(item.username || item.nickname || ''),
+          provider: 'kugou',
+        };
+      })
+      .filter(Boolean);
+    return { ok: true, playlists };
+  } catch (e) {
+    console.warn('[KugouLitePlaylists]', e && (e.message || e));
+    return { ok: false, playlists: [] };
+  }
+}
+
+// 歌单曲目（概念版 /playlist/track/all 或 playlist_detail）
+async function litePlaylistTracks(playlistId, kugouCookie) {
+  const pid = String(playlistId || '').trim();
+  if (!pid) return { ok: false, songs: [] };
+  try {
+    const res = await liteCall('playlist_track_all', { id: pid, page: 1, pagesize: 50 }, kugouCookie);
+    const body = res && res.body;
+    const lists = (body && (body.list || body.data && body.data.list || body.data && body.data.lists)) || [];
+    if (!Array.isArray(lists)) return { ok: false, songs: [] };
+    const songs = lists
+      .map((item) => (typeof kugouApi.mapKugouSearchItem === 'function' ? kugouApi.mapKugouSearchItem(item) : item))
+      .filter((s) => s && s.name && (s.hash || s.id));
+    return { ok: true, songs };
+  } catch (e) {
+    console.warn('[KugouLitePlaylistTracks]', e && (e.message || e));
+    return { ok: false, songs: [] };
+  }
+}
+
 // 重置设备（登出时调用）
 function resetDevice() {
   _dfid = null;
@@ -291,6 +339,8 @@ module.exports = {
   liteSongUrl,
   liteUserDetail,
   liteVipDetail,
+  liteUserPlaylists,
+  litePlaylistTracks,
   resetDevice,
   _test: { buildLiteCookie, deviceCookie, ensureDfid },
 };

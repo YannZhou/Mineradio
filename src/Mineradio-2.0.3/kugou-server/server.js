@@ -305,14 +305,20 @@ async function consturctServer(moduleDefs) {
    * ============================================================
    * API 响应缓存中间件
    * ============================================================
-   *
-   * 使用 apicache 对成功的请求（statusCode === 200）进行 2 分钟的缓存。
-   * 相同 URL 在 2 分钟内只会向酷狗服务器发送一次请求。
-   *
-   * 绕过缓存的方式：在请求 URL 后附加不同的 timestamp 参数，
-   * 例如: /personal/fm?timestamp=1691256061923
-   */
-  app.use(cache('2 minutes', (_, res) => res.statusCode === 200));
+   /**
+    * 使用 apicache 对成功的请求（statusCode === 200）进行 2 分钟的缓存。
+    * 相同 URL 在 2 分钟内只会向酷狗服务器发送一次请求。
+    *
+    * 绕过缓存的方式：在请求 URL 后附加不同的 timestamp 参数，
+    * 例如: /personal/fm?timestamp=1691256061923
+    *
+    * 注意：login_qr_check（扫码状态轮询）必须排除在缓存外——
+    * 否则 waiting 状态被缓存后，用户扫码确认也轮询不到最新状态。
+    */
+   app.use(cache('2 minutes', (req, res) => {
+     if (req.originalUrl && req.originalUrl.indexOf('/login/qr/check') >= 0) return false;
+     return res.statusCode === 200;
+   }));
 
   /**
    * ============================================================

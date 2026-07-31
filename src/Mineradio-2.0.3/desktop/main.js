@@ -5387,8 +5387,22 @@ ipcMain.handle('kugou-music-qr-create', async () => {
   if (!loginEasterEggGate.isUnlocked()) return loginEasterEggLockedResult();
   try {
     const keyResp = await kugouApi('/login/qr/key', { type: 'android' });
-    const key = (keyResp.data || keyResp.body?.data || keyResp).qrcode;
+    const keyData = keyResp.data || keyResp.body?.data || keyResp;
+    const key = keyData.qrcode || keyData.key;
     if (!key) throw new Error('no qrcode key');
+
+    // 优先使用官方 /v2/qrcode 返回的标准二维码（App 能识别关联 key）；
+    // 没有时再退回 /login/qr/create 自拼 URL 二维码
+    const officialImg = keyData.qrcode_img || keyData.qr_img || '';
+    if (officialImg) {
+      return {
+        ok: true,
+        key,
+        qrImgUrl: officialImg,
+        qrUrl: keyData.url || '',
+        source: 'official',
+      };
+    }
 
     const qrResp = await kugouApi('/login/qr/create', { key, qrimg: '1' });
     const qrData = (qrResp.data || qrResp.body?.data || qrResp);
@@ -5397,6 +5411,7 @@ ipcMain.handle('kugou-music-qr-create', async () => {
       key,
       qrUrl: qrData.url || '',
       qrImgUrl: qrData.qrcode_img || qrData.base64 || '',
+      source: 'create',
     };
   } catch (e) {
     return { ok: false, error: e.message || 'QR_CREATE_FAILED' };

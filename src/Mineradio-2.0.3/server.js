@@ -5602,7 +5602,23 @@ const server = http.createServer(async (req, res) => {
 
   if (pn === '/api/kugou/user/playlists') {
     try {
-      sendJSON(res, await handleKugouUserPlaylists(kugouCookie));
+      const auth = extractKugouAuth(kugouCookie);
+      let result = null;
+      if (auth && auth.userid && auth.userid !== '0' && auth.token) {
+        // 概念版歌单优先
+        result = await kugouLite.liteUserPlaylists(kugouCookie);
+        if (!result.ok || !result.playlists.length) {
+          result = null;
+        }
+      }
+      if (!result) {
+        result = await handleKugouUserPlaylists(kugouCookie);
+      }
+      sendJSON(res, {
+        provider: 'kugou',
+        loggedIn: true,
+        playlists: result.playlists || (result && result.playlists) || [],
+      });
     } catch (err) {
       console.error('[KugouUserPlaylists]', err);
       sendJSON(res, { provider: 'kugou', loggedIn: false, error: err.message, playlists: [] }, 500);
@@ -5616,7 +5632,16 @@ const server = http.createServer(async (req, res) => {
       const paged = url.searchParams.has('limit') || url.searchParams.has('offset');
       const limit = Math.max(10, Math.min(50, parseInt(url.searchParams.get('limit') || '50', 10) || 50));
       const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
-      sendJSON(res, await handleKugouPlaylistTracks(id, kugouCookie, paged ? { limit, offset, paged: true } : {}));
+      const auth = extractKugouAuth(kugouCookie);
+      let result = null;
+      if (auth && auth.userid && auth.userid !== '0' && auth.token) {
+        result = await kugouLite.litePlaylistTracks(id, kugouCookie);
+        if (!result.ok || !result.songs.length) result = null;
+      }
+      if (!result) {
+        result = await handleKugouPlaylistTracks(id, kugouCookie, paged ? { limit, offset, paged: true } : {});
+      }
+      sendJSON(res, result);
     } catch (err) {
       console.error('[KugouPlaylistTracks]', err);
       sendJSON(res, { provider: 'kugou', error: err.message, tracks: [] }, 500);
