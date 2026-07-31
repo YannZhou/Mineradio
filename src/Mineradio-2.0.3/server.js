@@ -5494,6 +5494,9 @@ const server = http.createServer(async (req, res) => {
         const liteUrl = await kugouLite.liteSongUrl(songUrlParams, kugouCookie);
         if (liteUrl && liteUrl.url && liteUrl.playable) {
           info = liteUrl;
+        } else if (liteUrl && liteUrl.reason === 'vip_required') {
+          // 概念版明确返回会员受限：直接返回，不回退标准版（标准版同样拿不到）
+          info = liteUrl;
         }
       } catch (liteErr) {
         console.warn('[KugouSongUrl] lite failed, fallback standard:', liteErr.message);

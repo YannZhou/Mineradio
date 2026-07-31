@@ -202,11 +202,30 @@ async function liteSongUrl(params, kugouCookie) {
   params = params || {};
   const hash = String(params.hash || params.fileHash || params.id || '').trim();
   if (!hash) return { provider: 'kugou', url: '', playable: false, error: 'MISSING_HASH' };
-  const quality = String(params.quality || '').trim() || '128';
+  // 音质映射：Mineradio 的 jymaster/hires/lossless/exhigh/standard → 概念版参数
+  const requestedQuality = String(params.quality || '').trim() || 'standard';
+  let liteQuality = '128';
+  let qualityLevel = 'standard';
+  if (typeof kugouApi.kugouQualityParam === 'function') {
+    liteQuality = String(kugouApi.kugouQualityParam(requestedQuality));
+    qualityLevel = String(requestedQuality).toLowerCase();
+    if (!['jymaster', 'hires', 'lossless', 'exhigh', 'standard'].includes(qualityLevel)) qualityLevel = 'standard';
+  } else {
+    const q = requestedQuality.toLowerCase();
+    if (q === 'jymaster') { liteQuality = 'viper_tape'; qualityLevel = 'jymaster'; }
+    else if (q === 'hires') { liteQuality = 'hires'; qualityLevel = 'hires'; }
+    else if (q === 'lossless' || q === 'sq') { liteQuality = 'flac'; qualityLevel = 'lossless'; }
+    else if (q === 'exhigh' || q === '320') { liteQuality = '320'; qualityLevel = 'exhigh'; }
+  }
+  // 按音质选择对应 hash（hq/sq/res），否则用主 hash
+  let playHash = hash;
+  if (qualityLevel === 'jymaster') playHash = params.resHash || params.sqHash || params.hqHash || hash;
+  else if (qualityLevel === 'hires' || qualityLevel === 'lossless') playHash = params.sqHash || params.resHash || params.hqHash || hash;
+  else if (qualityLevel === 'exhigh') playHash = params.hqHash || params.sqHash || params.resHash || hash;
   try {
     const res = await liteCall('song_url', {
-      hash,
-      quality,
+      hash: playHash,
+      quality: liteQuality,
       album_id: String(params.albumId || params.album_id || 0),
       album_audio_id: String(params.albumAudioId || params.album_audio_id || params.mixSongId || 0),
       ppage_id: '',
@@ -217,19 +236,21 @@ async function liteSongUrl(params, kugouCookie) {
         provider: 'kugou',
         url: String(body.url).trim(),
         playable: true,
-        level: 'standard',
-        quality: '标准',
+        level: qualityLevel,
+        quality: qualityLevel,
+        requestedQuality,
         source: 'kugou-lite',
+        hash: playHash,
       };
     }
     const msg = body && (body.error_msg || body.msg) || '';
-    if (/会员|vip|付费|权限/i.test(String(msg))) {
-      return { provider: 'kugou', url: '', playable: false, reason: 'vip_required', message: msg || '需要酷狗会员' };
+    if (/会员|vip|付费|权限/i.test(String(msg)) || Number(body && body.error_code) === 20010) {
+      return { provider: 'kugou', url: '', playable: false, reason: 'vip_required', message: msg || '需要酷狗会员', requestedQuality, level: qualityLevel };
     }
-    return { provider: 'kugou', url: '', playable: false, reason: 'url_unavailable', message: msg || '概念版未返回播放地址', status: body && body.status };
+    return { provider: 'kugou', url: '', playable: false, reason: 'url_unavailable', message: msg || '概念版未返回播放地址', status: body && body.status, requestedQuality, level: qualityLevel };
   } catch (e) {
     console.warn('[KugouLiteSongUrl]', e && (e.message || e));
-    return { provider: 'kugou', url: '', playable: false, error: (e && e.message) || 'LITE_SONG_URL_FAILED' };
+    return { provider: 'kugou', url: '', playable: false, error: (e && e.message) || 'LITE_SONG_URL_FAILED', requestedQuality, level: qualityLevel };
   }
 }
 
