@@ -1,0 +1,296 @@
+// ====================================================================
+//  kugou-lite.js — 酷狗音乐概念版（lite）API 内嵌调用层
+//  - 直接加载 kugou-server（KuGouMusicApi，EchoMusic 同源）的模块
+//  - 设备注册 / 签名 / 请求全部复用 kugou-server 的 util
+//  - 提供搜索 / 歌词 / 播放URL / 用户信息 / VIP 的概念版实现
+// ====================================================================
+'use strict';
+
+process.env.platform = 'lite'; // 必须最先设置：util/index.js 加载时读取
+
+const path = require('path');
+const fs = require('fs');
+
+const KUGOU_SERVER_DIR = path.join(__dirname, 'kugou-server');
+
+let _requestFactory = null;
+let _crypto = null;
+let _util = null;
+let _cachedModules = Object.create(null);
+
+function loadCore() {
+  if (_requestFactory) return;
+  _crypto = require(path.join(KUGOU_SERVER_DIR, 'util', 'crypto'));
+  _util = require(path.join(KUGOU_SERVER_DIR, 'util', 'util'));
+  const { createRequest } = require(path.join(KUGOU_SERVER_DIR, 'util', 'request'));
+  _requestFactory = createRequest;
+}
+
+function loadModule(name) {
+  if (_cachedModules[name]) return _cachedModules[name];
+  const mod = require(path.join(KUGOU_SERVER_DIR, 'module', name + '.js'));
+  _cachedModules[name] = mod;
+  return mod;
+}
+
+// ---------- 设备状态 ----------
+// 与 EchoMusic src/main/server.ts 一致：guid/mid/dev/mac/webgl 进程内生成一次
+let _device = null;
+
+function deviceState() {
+  if (_device) return _device;
+  loadCore();
+  const guid = cryptoRandomGuid();
+  const mid = _util.calculateMid(guid);
+  const dev = _util.randomString(10).toUpperCase();
+  const webgl = _util.generateWebGLHash();
+  _device = { guid, mid, dev, mac: '02:00:00:00:00:00', webgl };
+  return _device;
+}
+
+function cryptoRandomGuid() {
+  return _crypto.cryptoMd5(_util.getGuid());
+}
+
+function deviceCookie(extra) {
+  const d = deviceState();
+  return Object.assign({
+    KUGOU_API_MID: d.mid,
+    KUGOU_API_GUID: d.guid,
+    KUGOU_API_DEV: d.dev,
+    KUGOU_API_MAC: d.mac,
+    KUGOU_API_WEBGL: d.webgl,
+    KUGOU_API_PLATFORM: 'lite',
+  }, extra || {});
+}
+
+// ---------- dfid 注册（带缓存） ----------
+let _dfid = null;
+let _dfidPromise = null;
+
+function ensureDfid() {
+  if (_dfid) return Promise.resolve(_dfid);
+  if (_dfidPromise) return _dfidPromise;
+  _dfidPromise = (async () => {
+    const res = await callModule('register_dev', {}, deviceCookie());
+    const dfid = res && res.body && res.body.data && res.body.data.dfid;
+    if (!dfid) throw new Error('register_dev failed: no dfid');
+    _dfid = dfid;
+    return dfid;
+  })().catch((e) => {
+    _dfidPromise = null;
+    throw e;
+  });
+  return _dfidPromise;
+}
+
+// ---------- 通用模块调用 ----------
+// 与 EchoMusic handleApiRequest 对齐：params + cookie 合并后交给 module
+function callModule(name, params, cookie) {
+  const mod = loadModule(name);
+  return mod(Object.assign({}, params || {}, { cookie: cookie || {} }), (config) => {
+    config.ip = '';
+    return _requestFactory(config);
+  });
+}
+
+// 概念版专用 cookie：设备标识 + 用户登录态 + dfid
+function buildLiteCookie(kugouCookie) {
+  const base = deviceCookie();
+  const extra = { userid: '0', token: '' };
+  if (kugouCookie) {
+    const text = String(kugouCookie || '');
+    // 兼容 token=xxx;userid=xxx 或 KuGoo=... 复合 cookie
+    const parts = text.split(/;\s*/);
+    for (const part of parts) {
+      const eq = part.indexOf('=');
+      if (eq < 1) continue;
+      const key = part.slice(0, eq).trim();
+      const value = part.slice(eq + 1).trim();
+      if (!key || !value) continue;
+      if (key === 'token' || key === 'Token') extra.token = value;
+      else if (/^userid$/i.test(key)) extra.userid = value;
+      else if (key === 'dfid' || key === 'kg_dfid') base.dfid = value;
+    }
+    // 从 KuGoo 复合字段也尝试提取
+    const kuGoo = text.match(/KuGoo=([^;]+)/);
+    if (kuGoo && kuGoo[1]) {
+      const t = kuGoo[1].match(/\bt=([^&]+)/);
+      if (t && !extra.token) extra.token = decodeURIComponent(t[1]);
+      const uid = kuGoo[1].match(/KugooID=([^&]+)/);
+      if (uid && (!extra.userid || extra.userid === '0')) extra.userid = decodeURIComponent(uid[1]);
+    }
+  }
+  return Object.assign({}, base, extra);
+}
+
+// 每次调用都确保 dfid（未注册时先注册）
+async function liteCall(name, params, kugouCookie) {
+  loadCore();
+  const dfid = await ensureDfid();
+  const cookie = buildLiteCookie(kugouCookie);
+  cookie.dfid = dfid;
+  return callModule(name, params, cookie);
+}
+
+// ====================================================================
+//  业务封装（返回值对齐 Mineradio 现有格式，尽量复用 kugou-api 转换）
+// ====================================================================
+
+const kugouApi = require('./kugou-api');
+
+// 搜索：概念版返回 data.lists → mapKugouSearchItem（字段完全兼容）
+async function liteSearch(keywords, limit, kugouCookie, offset) {
+  const kw = String(keywords || '').trim();
+  if (!kw) return [];
+  const lim = Math.max(1, Math.min(Number(limit) || 10, 20));
+  const start = Math.max(0, Number(offset) || 0);
+  const pageSize = lim;
+  const page = Math.floor(start / pageSize) + 1;
+  const res = await liteCall('search', {
+    keywords: kw,
+    type: 'song',
+    page,
+    pagesize: pageSize,
+  }, kugouCookie);
+  const body = res && res.body;
+  const lists = body && body.data && Array.isArray(body.data.lists) ? body.data.lists : [];
+  return lists
+    .map((item) => {
+      // 概念版返回 FileName="歌手 - 歌名"，SongName 为空；补 OriSongName 到 SongName 让转换层取到纯歌名
+      if (item && !item.SongName && item.OriSongName) item.SongName = item.OriSongName;
+      return typeof kugouApi.mapKugouSearchItem === 'function' ? kugouApi.mapKugouSearchItem(item) : item;
+    })
+    .filter((s) => s && s.name && (s.hash || s.id));
+}
+
+// 歌词：search/lyric → candidates[0] → lyric(fmt=lrc, decode)
+async function liteLyric(hash, albumAudioId, durationSec, kugouCookie) {
+  const fileHash = String(hash || '').trim();
+  if (!fileHash) return { provider: 'kugou', error: 'Missing Kugou hash', lyric: '' };
+  const durationMs = Math.max(0, Number(durationSec) || 0) * 1000;
+  try {
+    const searchRes = await liteCall('search_lyric', {
+      hash: fileHash,
+      duration: durationMs || 0,
+      album_audio_id: String(albumAudioId || 0),
+      man: 'no',
+    }, kugouCookie);
+    const candidates = (searchRes.body && searchRes.body.candidates) || [];
+    const cand = candidates[0];
+    if (!cand || !cand.id) return { provider: 'kugou', hash: fileHash, lyric: '', trans: '' };
+    const lyricRes = await liteCall('lyric', {
+      id: cand.id,
+      accesskey: cand.accesskey || '',
+      fmt: 'lrc',
+      decode: 'true',
+    }, kugouCookie);
+    const content = lyricRes.body && lyricRes.body.content;
+    let lyric = '';
+    if (content) {
+      try { lyric = Buffer.from(String(content), 'base64').toString('utf8').replace(/^\uFEFF/, ''); } catch (_) { lyric = ''; }
+    }
+    return { provider: 'kugou', hash: fileHash, lyric, trans: '' };
+  } catch (e) {
+    console.warn('[KugouLiteLyric]', e && (e.message || e));
+    return { provider: 'kugou', hash: fileHash, lyric: '', trans: '' };
+  }
+}
+
+// 播放 URL：概念版 /song/url（encryptKey 签名音源）
+async function liteSongUrl(params, kugouCookie) {
+  params = params || {};
+  const hash = String(params.hash || params.fileHash || params.id || '').trim();
+  if (!hash) return { provider: 'kugou', url: '', playable: false, error: 'MISSING_HASH' };
+  const quality = String(params.quality || '').trim() || '128';
+  try {
+    const res = await liteCall('song_url', {
+      hash,
+      quality,
+      album_id: String(params.albumId || params.album_id || 0),
+      album_audio_id: String(params.albumAudioId || params.album_audio_id || params.mixSongId || 0),
+      ppage_id: '',
+    }, kugouCookie);
+    const body = res && res.body;
+    if (body && Number(body.status) === 1 && body.url) {
+      return {
+        provider: 'kugou',
+        url: String(body.url).trim(),
+        playable: true,
+        level: 'standard',
+        quality: '标准',
+        source: 'kugou-lite',
+      };
+    }
+    const msg = body && (body.error_msg || body.msg) || '';
+    if (/会员|vip|付费|权限/i.test(String(msg))) {
+      return { provider: 'kugou', url: '', playable: false, reason: 'vip_required', message: msg || '需要酷狗会员' };
+    }
+    return { provider: 'kugou', url: '', playable: false, reason: 'url_unavailable', message: msg || '概念版未返回播放地址', status: body && body.status };
+  } catch (e) {
+    console.warn('[KugouLiteSongUrl]', e && (e.message || e));
+    return { provider: 'kugou', url: '', playable: false, error: (e && e.message) || 'LITE_SONG_URL_FAILED' };
+  }
+}
+
+// 用户信息（概念版 /user/detail）
+async function liteUserDetail(kugouCookie) {
+  try {
+    const res = await liteCall('user_detail', {}, kugouCookie);
+    const body = res && res.body;
+    if (body && Number(body.status) === 1 && body.data) {
+      const d = body.data;
+      return {
+        ok: true,
+        userid: String(d.userid || d.kugouid || d.user_id || ''),
+        nickname: String(d.nickname || d.user_name || d.name || ''),
+        avatar: String(d.avatar || d.head_img || d.pic || ''),
+        gender: d.gender,
+      };
+    }
+    return { ok: false, error_code: body && body.error_code };
+  } catch (e) {
+    return { ok: false, error: (e && e.message) || 'USER_DETAIL_FAILED' };
+  }
+}
+
+// VIP 信息（概念版 /user/vip/detail）
+async function liteVipDetail(kugouCookie) {
+  try {
+    const res = await liteCall('user_vip_detail', {}, kugouCookie);
+    const body = res && res.body;
+    if (body && Number(body.status) === 1 && body.data) {
+      const d = body.data;
+      const isVip = !!(d.is_vip || d.isVip || d.vip_status || d.union_vip_status);
+      const svip = !!(d.is_svip || d.isSvip || d.svip_status);
+      return {
+        ok: true,
+        isVip,
+        isSvip: svip,
+        vipLevel: svip ? 'svip' : (isVip ? 'vip' : 'none'),
+        expireAt: d.vip_expire_time || d.expire_time || '',
+      };
+    }
+    return { ok: false, error_code: body && body.error_code };
+  } catch (e) {
+    return { ok: false, error: (e && e.message) || 'VIP_DETAIL_FAILED' };
+  }
+}
+
+// 重置设备（登出时调用）
+function resetDevice() {
+  _dfid = null;
+  _dfidPromise = null;
+  _device = null;
+  _cachedModules = Object.create(null);
+}
+
+module.exports = {
+  liteSearch,
+  liteLyric,
+  liteSongUrl,
+  liteUserDetail,
+  liteVipDetail,
+  resetDevice,
+  _test: { buildLiteCookie, deviceCookie, ensureDfid },
+};

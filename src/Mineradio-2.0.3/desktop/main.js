@@ -5409,9 +5409,24 @@ ipcMain.handle('kugou-music-qr-check', async (_event, key) => {
     const resp = await kugouApi('/login/qr/check', { key: String(key || '') });
     const data = resp.data || resp.body?.data || resp;
     if (data.status === 4) {
+      const token = String(data.token || '');
+      const userid = String(data.userid || '');
+      // 保存概念版登录态到 kugouCookie（供 server.js 登录状态/搜索/歌词/播放使用）
+      try {
+        const cookieText = ['token=' + token, 'userid=' + userid].filter(Boolean).join('; ');
+        if (cookieText && localServer && typeof localServer.saveKugouCookie === 'function') {
+          localServer.saveKugouCookie(cookieText);
+          console.log('[KugouQR] lite session saved, userid=' + userid);
+        } else {
+          console.warn('[KugouQR] localServer not ready, session not persisted');
+        }
+      } catch (saveErr) {
+        console.warn('[KugouQR] save cookie failed:', saveErr.message);
+      }
       return {
         ok: true, status: 'confirmed',
-        token: data.token || '', userid: String(data.userid || ''),
+        token,
+        userid,
         nickname: data.nickname || data.user_name || '',
       };
     }
