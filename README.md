@@ -37,6 +37,15 @@ npm run build:linux                      # 打包 deb 到 dist/
 
 > 本机若设置了 `ELECTRON_RUN_AS_NODE`，运行 Electron 前需要先 `unset`，否则会被当成纯 Node 执行。
 
+## 版本详情
+
+每个版本的具体改动、验证情况与已知限制，见 [docs/versions/](./docs/versions/)：
+
+- [v2.2.0-linux](./docs/versions/v2.2.0-linux.md) —— 当前版本：跟上上游 v2.2.0，酷狗概念版全面升级
+- [v2.0.4](./docs/versions/v2.0.4.md) —— 酷狗概念版全流程适配 + 本地音乐歌词识别
+- [v2.0.3-linux](./docs/versions/v2.0.3-linux.md) —— Linux 平台适配：OpenGL 渲染、Linux 内存回收、deb 打包
+- [v2.0.2-linux](./docs/versions/v2.0.2-linux.md) —— 首次 Linux 适配：GPU 渲染修复、鼠标侧键拦截、deb 打包
+
 ## 第三方音乐平台说明
 
 Mineradio 不是网易云音乐、QQ 音乐或腾讯音乐娱乐集团的官方客户端，也不隶属于任何音乐平台。
