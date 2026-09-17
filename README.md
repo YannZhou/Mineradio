@@ -1,88 +1,41 @@
-# Mineradio
+# Mineradio — Linux 适配版
 
-![Mineradio 暗场启动页](./docs/assets/readme/cinema-beat-smoke.png)
+**这是 [XxHuberrr/Mineradio](https://github.com/XxHuberrr/Mineradio) 的 Linux 适配版本**（上游原版是 Windows 桌面应用），由 [YannZhou](https://github.com/YannZhou) 维护。
 
-Mineradio 是一款 Windows 桌面沉浸式音乐播放器，把搜索播放、歌词舞台、粒子视觉、3D 歌单架和完整桌面模式组合成一个更接近现场感的私人音乐空间。
+本仓库不改动上游的界面与视觉设计，只做"让它在 Linux 上装完即用"这件事，并补齐上游尚未支持的**酷狗音乐概念版**链路与**本地歌词识别**。想了解软件本身的能力，请看上游仓库；本页只说明适配版做了什么、怎么装。
 
-## 立即下载 Windows 安装包
+## 适配内容
 
-> 本次下载入口已更换，请使用下面的新网盘链接，并更新旧收藏。通过公告中的网盘入口下载，也是在支持 Mineradio 的持续更新。
+- **Linux 运行适配**：显卡渲染走 OpenGL，内存整理支持 Linux（含系统级内存回收），禁用鼠标侧键防误触
+- **deb 打包**：一键安装到 `/opt/Mineradio`，桌面项自带必要的启动参数，X11 下开箱可用
+- **酷狗音乐概念版**：扫码登录（进程内完成，不额外起进程）、设备身份持久化、听歌自动领取每日 VIP、听歌奖励自动上报、登录面板可一键刷新会员状态
+- **本地歌词识别**：优先读取同目录同名 `.lrc`，其次读取音频内嵌歌词，最后按歌名与歌手在线兜底匹配
+- 移除了对本项目无意义的 Windows 分发内容，依赖声明补全，克隆后可直接构建
 
-| 下载入口 | 推荐人群 | 链接 |
-| --- | --- | --- |
-| 夸克盘 | 夸克用户 | [下载 Mineradio 2.2.0](https://pan.quark.cn/s/4b124d3e81d3) |
-| 百度云 | 百度网盘用户（提取码 `SJHP`） | [下载 Mineradio 2.2.0](https://pan.baidu.com/s/17CwpHUza67w_Grgc3s5nOw?pwd=SJHP) |
-| GitHub Release | 版本说明与源码 | [查看 Mineradio 2.2.0](https://github.com/XxHuberrr/Mineradio/releases/tag/v2.2.0) |
+## 安装
 
-本页、发布公告和软件更新入口使用相同的两条新链接。旧分享地址不再作为本次版本的下载入口。
-
-安装时只需要下载并运行 `Mineradio-2.2.0-Setup.exe`。不要把 `.blockmap`、`latest.yml` 或 `win-unpacked` 当成正式安装包。
-
-## 下载或安装被拦截怎么办
-
-小众 Electron 桌面软件、未签名安装包有时会被浏览器、Windows Defender 或 SmartScreen 提示风险。请先确认安装包来自本次公告的下载入口，文件名是 `Mineradio-2.2.0-Setup.exe`。
-
-1. 浏览器下载栏提示风险时，打开下载列表，点这条下载右侧的 `...` 三个点，选择 `保留` / `仍要保留` / `显示更多` 后继续保留。
-2. Windows SmartScreen 弹出蓝色拦截窗口时，点 `更多信息`，再点 `仍要运行`。
-3. 如果杀毒软件明确显示木马、高危或已经隔离，不要强行运行；删除该文件后重新从上面的网盘入口下载，仍然异常请带截图反馈给作者。
-
-## 作者支持
-
-如果 Mineradio 陪你多听了一首歌，也欢迎请作者一杯咖啡。
-
-[查看完整支持页](./docs/SUPPORT.md)
-
-![Mineradio 作者支持渠道](./docs/assets/support/mineradio-author-support-poster.png)
-
-Mineradio 2.2 修复音乐接口的登录与播放问题，改善歌单加载和网络异常恢复，并加入更多手势操作与粒子预设。
-
-## 当前版本
-
-当前版本：`2.2.0`
-
-状态：Mineradio 2.2.0 正式版。
-
-> 安全提示：`v1.0.10` 及更早旧安装包不再建议继续安装或传播。请使用本次公告提供的 `Mineradio-2.2.0-Setup.exe`。
-
-## 核心特性
-
-- 首页包含每日推荐、平台推荐、继续听、听歌画像和我的歌单入口
-- 完整桌面模式保留播放器、主页、歌单和桌面交互
-- 支持本地 MP4 与 Wallpaper Engine 视觉内容
-- 播放后切换到 Emily / 默认播放态视觉，歌词舞台与粒子舞台同步工作
-- 基于节奏的电影镜头视觉系统
-- 面向长播客和 DJ 曲目的专属视觉模式
-- 歌词舞台、自定义歌词、歌词位置与视觉控制
-- 自定义专辑封面上传与裁剪
-- 右键唤起 3D 歌单架，支持歌单队列浏览
-- 网易云音乐账号、搜索、歌单、播客等体验接入
-- QQ 音乐搜索、登录态与音源补充接入
-- GitHub Releases 更新检测与下载入口
-- 首次启动内置「默认测试」视觉用户存档，软件内默认视觉参数与该存档一致
-
-## 使用说明
-
-Windows 用户可以从本次发布公告列出的新网盘入口下载安装包。
-
-正式分发以 `Mineradio-2.2.0-Setup.exe` 为准，不建议直接使用 `win-unpacked` 目录。安装包会创建桌面快捷方式。
-
-已经安装过旧版本的用户可直接运行 `Mineradio-2.2.0-Setup.exe` 完成更新。软件内更新入口只会打开浏览器下载页，不会在客户端内下载或应用补丁。
-
-## 开发运行
+下载 Releases 中的 deb 包安装即可：
 
 ```bash
-npm install
-npm start
-npm run build:win
+sudo dpkg -i mineradio_*_amd64.deb
+# 如提示缺少依赖：
+sudo apt-get -f install
 ```
 
-桌面版入口由 Electron 主进程加载本地服务。`npm run build:win` 会生成 Windows NSIS 安装包，产物位于 `dist/`。
+升级安装直接覆盖，登录状态会保留。
 
-## 更新机制
+## 从源码构建
 
-Mineradio 会请求 GitHub Releases latest 检测新版本。远端版本高于本地版本时，应用内更新入口会展示 Release 内容，并通过系统浏览器打开可选网盘线路；即使 Release 附带完整安装包，`2.0.3+` 客户端也不会读取、下载、缓存或应用该附件与补丁。
+```bash
+git clone https://github.com/YannZhou/Mineradio.git
+cd Mineradio
+npm install --include=dev
+node node_modules/electron/install.js   # 若 npm 因 allow-scripts 白名单未下载 Electron
+npm start                                # 开发运行
+npm run build:linux                      # 打包 deb 到 dist/
+```
 
-本地验证更新链路时，可以通过 `MINERADIO_UPDATE_MANIFEST` 指向一个本地 manifest JSON 或 HTTP 地址来模拟线上 Release。
+> 本机若设置了 `ELECTRON_RUN_AS_NODE`，运行 Electron 前需要先 `unset`，否则会被当成纯 Node 执行。
 
 ## 第三方音乐平台说明
 
