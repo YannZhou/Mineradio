@@ -57,6 +57,8 @@ Mineradio 不是网易云音乐、QQ 音乐或腾讯音乐娱乐集团的官方�
 
 Mineradio 由 XxHuberrr 主要设计与打造。emily 作为早期视觉底层想法与 `emily` 视觉预设改进方向的共创者和灵感来源之一，特此感谢。
 
+本适配版的酷狗概念版链路（扫码登录、设备身份持久化、每日奖励与时长 VIP 领取、播放取址与音质降级）借鉴了第三方酷狗概念版播放器 [hoowhoami/EchoMusic](https://github.com/hoowhoami/EchoMusic) 的公开实现思路，接口层参考 [MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMusicApi)（本仓库 `kugou-server/` 即其派生副本）；本项目未使用其界面与业务代码，具体实现为本适配版自行编写，特此致谢。
+
 同时感谢小天才e宝、应春日、锋将军、軌跡、林中、骊、风痕、花椰菜🥦在早期体验、测试反馈和发布准备中的帮助。
 
 ## 版权与授权
